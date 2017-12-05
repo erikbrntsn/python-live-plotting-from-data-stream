@@ -1,6 +1,8 @@
 __pycache__
 plotting.sublime-workspace
 
+quaternion
+
 # c++ socket server files to ignore
 c++_socket_server/server
 c++_socket_server/Build

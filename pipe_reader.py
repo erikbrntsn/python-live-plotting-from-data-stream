@@ -40,4 +40,4 @@ if __name__ == '__main__':
 
   while True:
     s, data, succes = reader()
-    print(s, data)
+    print(s, data, succes)

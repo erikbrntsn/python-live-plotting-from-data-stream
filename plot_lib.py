@@ -7,13 +7,14 @@ import matplotlib
 from matplotlib import pyplot as plt
 from ring import Ring
 
+import warnings
+warnings.filterwarnings("ignore", ".*GUI is implemented.*")
 
-ops = {
-       "textColor" : (230/255,)*3,
-       "windowColor" : (11/255,)*3,
-       "plotBackgroundColor" : (22/255,)*3,
-       "colorPalette" : "2.0"
-       }
+
+ops = {"textColor": (230 / 255,) * 3,
+       "windowColor": (11 / 255,) * 3,
+       "plotBackgroundColor": (22 / 255,) * 3,
+       "colorPalette": "2.0"}
 
 if ops["colorPalette"] == "2.0":
   # Set line colors to match those of matplotlib 2.0
@@ -43,46 +44,53 @@ class Plotter(object):
     self.ops = _ops
     self.fig = plt.figure()
     self.fig.canvas.mpl_connect('key_press_event', self.press)
-    self.setUp(labels)
+    self.labels = labels
+    self.setUp(False)
 
     self.lastPlotUpdate = time.time()
     self.freezePlot = False
     self.receivingCommand = False
     self.command = ''
 
-  def setUp(self, labels):
-    if not labels:
-      print("No labels specified - Trying to find them automatically..")
+  def setUp(self, discover):
+    if discover:
+      print("Looking for labels automatically..")
       self.labels = discoverLabels(self.reader)
       print("Found labels: {:}".format(', '.join(self.labels)))
-    else:
-      self.labels = labels
 
     self.freezePlot = False
     self.rings = {}
 
     self.fig.patch.set_facecolor(self.ops["windowColor"])
-    for i, s in enumerate(self.labels):
-      ax = self.fig.add_subplot(len(self.labels), 1, i + 1, facecolor=self.ops["plotBackgroundColor"])
-      packageLength = getLinesPerType(s, self.reader)
-      self.rings[s] = Ring(packageLength, self.ringLength)
-      self.rings[s].lineSets = []
-      for j in range(packageLength):
-        if "ls" in self.ops or "linestyle" in self.ops:
-          self.rings[s].lineSets.append(ax.plot([], [], label=chr(ord('a')+j))[0])
-        else:
-          self.rings[s].lineSets.append(ax.plot([], [], '.', label=chr(ord('a')+j))[0])
-      ax.set_title(s, color=self.ops["textColor"])
-      ax.legend(loc=2)
-      ax.xaxis.label.set_color(self.ops["textColor"])
-      # ax.yaxis.label.set_color(self.ops["textColor"])
-      ax.tick_params(axis='x', colors=self.ops["textColor"])
-      ax.tick_params(axis='y', colors=self.ops["textColor"])
-      self.rings[s].ax = ax
+    for i, l in enumerate(self.labels):
+      self.initializePlot(i, l)
 
     print("\nNumber of data points for each label:")
-    for s in self.labels:
-      print("{:}: {:} ".format(s, self.rings[s].nY))
+    for l in self.labels:
+      print("{:}: {:} ".format(l, self.rings[l].nY))
+
+  def initializePlot(self, i, l):
+    # Create subplot
+    ax = self.fig.add_subplot(len(self.labels), 1, i + 1, facecolor=self.ops["plotBackgroundColor"])
+
+    # Set up data rings and lines
+    packageLength = getLinesPerType(l, self.reader)
+    self.rings[l] = Ring(packageLength, self.ringLength)
+    self.rings[l].lineSets = []
+    for j in range(packageLength):
+      if "ls" in self.ops or "linestyle" in self.ops:
+        self.rings[l].lineSets.append(ax.plot([], [], label=chr(ord('a') + j))[0])
+      else:
+        self.rings[l].lineSets.append(ax.plot([], [], label=chr(ord('a') + j))[0])
+    self.rings[l].ax = ax
+
+    # Set plot layout and style
+    ax.set_title(l, color=self.ops["textColor"])
+    ax.legend(loc=2)
+    ax.xaxis.label.set_color(self.ops["textColor"])
+    # ax.yaxis.label.set_color(self.ops["textColor"])
+    ax.tick_params(axis='x', colors=self.ops["textColor"])
+    ax.tick_params(axis='y', colors=self.ops["textColor"])
 
   def update(self):
     self.getData()
@@ -93,19 +101,27 @@ class Plotter(object):
   def updatePlotData(self):
     if not self.freezePlot:
       for ring in self.rings.values():
+        # Set data for each line
         for j in range(ring.nY):
           ring.lineSets[j].set_data(ring.xs, ring.yData[j, :])
 
+        # Set axis limits. Last value in ylim, 1e-4, is added to suppress warning about collapsed axis from matplotlib after reset
         deltaY = (ring.maxY - ring.minY) * 0.1
         ring.ax.set_ylim(ring.minY - deltaY, ring.maxY + deltaY)
         ring.ax.set_xlim(ring.xs[ring.head] - ring.length, ring.xs[ring.head])
+        # Allow for '-' line style by not drawing line from "data[-1] to data[0]"
         ring.looseTail()
 
+      # Draw lines
+      plt.pause(0.001)
+      # Allow for '-' line style by not drawing line from "data[-1] to data[0]"
       for ring in self.rings.values():
         ring.fixTail()
-    plt.pause(0.001)
+    else:
+      plt.pause(0.001)
 
   def press(self, event):
+    # Combine key presses into command
     if self.receivingCommand:
       if event.key == 'enter':
         self.receivingCommand = False
@@ -117,24 +133,30 @@ class Plotter(object):
         sys.stdout.write("\r{:}".format(self.command))
       return
 
+    # Reset y-axes
     if event.key == 'x':
       for ring in self.rings.values():
         ring.reset()
 
+    # Pause plot (data will still be received)
     elif event.key == 'p':
       self.freezePlot = not self.freezePlot
 
+    # Reset and discover labels
     elif event.key == 'r':
       self.fig.clear()
-      self.setUp([])
+      self.setUp(True)
 
+    # Save current plot window
     elif event.key == 'g':
       self.fig.savefig('{:.0f}.png'.format(time.time()), bbox_inches='tight', facecolor=self.fig.get_facecolor(), edgecolor='none')
 
+    # Start/stop listining command key presses
     elif event.key == 'enter':
       print("listening for message until next enter key press:")
       self.receivingCommand = True
 
+    # Close and quit
     elif event.key == 'q':
       plt.close(event.canvas.figure)
       self.reader.closeConnection()
