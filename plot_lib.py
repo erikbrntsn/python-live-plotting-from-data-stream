@@ -7,6 +7,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 from ring import Ring
 
+
 ops = {
        "textColor" : (230/255,)*3,
        "windowColor" : (11/255,)*3,
@@ -62,7 +63,7 @@ class Plotter(object):
 
     self.fig.patch.set_facecolor(self.ops["windowColor"])
     for i, s in enumerate(self.labels):
-      ax = self.fig.add_subplot(len(self.labels), 1, i + 1, axisbg=self.ops["plotBackgroundColor"])
+      ax = self.fig.add_subplot(len(self.labels), 1, i + 1, facecolor=self.ops["plotBackgroundColor"])
       packageLength = getLinesPerType(s, self.reader)
       self.rings[s] = Ring(packageLength, self.ringLength)
       self.rings[s].lineSets = []
@@ -96,8 +97,7 @@ class Plotter(object):
           ring.lineSets[j].set_data(ring.xs, ring.yData[j, :])
 
         deltaY = (ring.maxY - ring.minY) * 0.1
-        # Last value, 1e-4, is added to suppress warning about collapsed axis from matplotlib after reset
-        ring.ax.set_ylim(ring.minY - deltaY, ring.maxY + deltaY + 1e-4)
+        ring.ax.set_ylim(ring.minY - deltaY, ring.maxY + deltaY)
         ring.ax.set_xlim(ring.xs[ring.head] - ring.length, ring.xs[ring.head])
         ring.looseTail()
 

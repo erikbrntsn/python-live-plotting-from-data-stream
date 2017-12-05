@@ -8,7 +8,7 @@ parent_parser.add_argument("-l", "--labels", type=str, default=[], help="List of
 
 parser = argparse.ArgumentParser(add_help=False)
 subparsers = parser.add_subparsers(dest="subparser")
-# Workaround for sub_pserser bug
+# Workaround for sub_parser bug
 # http://stackoverflow.com/q/23349349
 subparsers.required = True
 

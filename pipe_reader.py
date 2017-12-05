@@ -1,38 +1,43 @@
 import sys
-import numpy as np
+from interpretations import toFloat, alwaysTrue
 
 
 class Reader(object):
-    def closeConnection(self):
-        pass
+  def __init__(self, dataIntegrityFync=alwaysTrue, dataInterpretFunc=toFloat):
+    self.dataInterpretFunc = dataInterpretFunc
+    self.dataIntegrityFync = dataIntegrityFync
 
-    def write(self, data):
-        print("Can not write data to server when using pipe reader.\nMessage: '{:}' has been discarded".format(data))
+  def closeConnection(self):
+    pass
 
-    def __call__(self, label=None, raw=False, dtype=float):
-        """ label: data group label
-            raw: if true returns the data as it was read (string)
-            dtype: data type that the data is converted to if raw is false """
-        while True:
-            rawData = sys.stdin.readline()
-            if raw:
-                # return whatever was received
-                return rawData
+  def write(self, data):
+    print("Can not write data to server when using pipe reader.\nMessage: '{:}' has been discarded".format(data))
 
-            try:
-                # Interpret the received data
-                splittedData = rawData.split(',')
-                if label is None or label == splittedData[0]:
-                    return splittedData[0], np.array(list(map(dtype, splittedData[1:]))), True
-            except ValueError:
-                if len(splittedData) > 1:
-                    return splittedData[0], splittedData[1:], False
-            return rawData, [], False
+  def __call__(self, label=None, raw=False):
+    """ label: data group label
+      raw: if true returns the data as it was read (string) """
+    while True:
+      rawData = sys.stdin.readline()
+      if raw:
+        # return whatever was received
+        return rawData
+
+      try:
+        # Interpret the received data
+        dataIsGood, rawData = self.dataIntegrityFync(rawData)
+        if dataIsGood:
+          splittedData = rawData.split(',')
+          if label is None or label == splittedData[0]:
+            return splittedData[0], self.dataInterpretFunc(splittedData[1:]), True
+      except ValueError:
+        if len(splittedData) > 1:
+          return splittedData[0], splittedData[1:], False
+      return rawData, [], False
 
 
 if __name__ == '__main__':
-    reader = Reader()
+  reader = Reader()
 
-    while True:
-        s, data = reader()
-        print(s, data)
+  while True:
+    s, data, succes = reader()
+    print(s, data)
