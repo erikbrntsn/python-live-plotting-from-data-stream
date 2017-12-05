@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+# Setup and choose from a few standard configurations
+
 import argparse
 from plot_lib import Plotter
 
@@ -25,35 +28,30 @@ socket_parser = subparsers.add_parser('pipe', parents=[parent_parser], help="Use
 args = parser.parse_args()
 
 
-def startSocketPlotter(args):
-  import socket_reader
-  reader = socket_reader.Reader(host=args.host, port=args.port)
-  return Plotter(reader=reader, ringLength=args.n_points, labels=[])
-
-
-def startSerialPlotter(args):
-  import serial_reader
-  reader = serial_reader.Reader(port=args.serial_port, baudrate=args.baudrate)
-  return Plotter(reader=reader, ringLength=args.n_points, labels=[])
-
-
-def startPipePlotter(args):
-  import pipe_reader
-  reader = pipe_reader.Reader()
-  return Plotter(reader=reader, ringLength=args.n_points, labels=[])
-
-
 # Start plotter with data over socket connection
 if args.subparser == "socket":
-  plotter = startSocketPlotter(args)
+  import socket_reader
+  reader = socket_reader.Reader(host=args.host, port=args.port)
+  plotter =  Plotter(reader=reader, ringLength=args.n_points, labels=[])
 
 # Start plotter with data over serial connection
 elif args.subparser == "serial":
-  plotter = startSerialPlotter(args)
+  import serial_reader
+  reader = serial_reader.Reader(port=args.serial_port, baudrate=args.baudrate)
+  plotter =  Plotter(reader=reader, ringLength=args.n_points, labels=[])
+
+# Start plotter with data over serial connection
+elif args.subparser == "serial_crc":
+  import serial_reader
+  from interpretations import crc
+  reader = serial_reader.Reader(port=args.serial_port, baudrate=args.baudrate, dataIntegrityFync=crc)
+  plotter =  Plotter(reader=reader, ringLength=args.n_points, labels=[])
 
 # Start plotter with data through pipe
 elif args.subparser == "pipe":
-  plotter = startPipePlotter(args)
+  import pipe_reader
+  reader = pipe_reader.Reader()
+  plotter = Plotter(reader=reader, ringLength=args.n_points, labels=[])
 
 while True:
   plotter.update()
