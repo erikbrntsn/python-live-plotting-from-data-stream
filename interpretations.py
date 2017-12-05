@@ -20,7 +20,7 @@ def alwaysTrue(data):
 
 
 def toFloat(data, dtype=float):
-  np.array(list(map(dtype, data)))
+  return np.array(list(map(dtype, data)))
 
 
 # Helper funcs
